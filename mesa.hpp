@@ -3,7 +3,10 @@
 #include "tablero.hpp"
 #include "config.hpp"
 #include <iostream>
+#include <string>
+#include <sstream>
 #include <vector>
+
 using namespace std;
 
 const int LIBRE= -1;
@@ -143,4 +146,21 @@ inline void mesa_terminar(Mesa& m, int ganador){
         m.ganador = ganador;
     }
     pthread_mutex_unlock(&m.mtx);
+}
+inline string mesa_a_texto(Mesa& m){
+    pthread_mutex_lock(&m.mtx);
+    auto c= [&](int nodo){
+        int x = m.celda[nodo];
+        return x == LIBRE ? '.' : (x == PUMA ? 'P': 'D');
+    };
+    ostringstream out;
+    out << " T= "<< c(NODO_T)<< endl;
+    out << " TI=" << c(NODO_TI)<< " TD="<< c(NODO_TD)<< endl;
+    for (int f=0; f < FILAS; f++){
+        for (int col = 0; col < COLS; col++) out << c(id_grilla(f,col))<< ' ';
+        out << endl;
+    }
+    out << "capturados="<< m.capturados;
+    pthread_mutex_unlock(&m.mtx);
+    return out.str();
 }
