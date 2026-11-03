@@ -1,0 +1,11 @@
+# Ejecutables generados por la compilacion
+test_mesa
+test_mesa_tsan
+test_tablero
+race
+
+# Carpetas de simbolos de depuracion de macOS
+*.dSYM/
+
+# Metadatos de Finder
+.DS_Store

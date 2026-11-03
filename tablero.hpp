@@ -69,8 +69,8 @@ inline vector<Salto> construir_saltos(){
         }
     }
     agregar_salto(saltos,NODO_T, id_grilla(0,2), id_grilla(1,2));
-    agregar_salto(saltos,NODO_TI, NODO_TI, id_grilla(0,0));
-    agregar_salto(saltos,NODO_TD, NODO_TD, id_grilla(0,4));
+    agregar_salto(saltos,NODO_T, NODO_TI, id_grilla(0,0));
+    agregar_salto(saltos,NODO_T, NODO_TD, id_grilla(0,4));
     agregar_salto(saltos,NODO_TI, id_grilla(0,1), id_grilla(1,1));
     agregar_salto(saltos,NODO_TD, id_grilla(0,3), id_grilla(1,3));
     return saltos;
