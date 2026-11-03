@@ -1,13 +1,13 @@
 #pragma once
 #include <pthread.h>
 #include "tablero.hpp"
+#include "config.hpp"
 #include <iostream>
 #include <vector>
 using namespace std;
 
 const int LIBRE= -1;
 const int PUMA= 0;
-const int NUM_PERROS = 12;
 const int CAPTURAS_PARA_GANAR =6;
 // esto esta para lectura despues de construirse
 inline const vector<vector<int>> VECINOS = construir_vecinos();
@@ -22,14 +22,14 @@ struct Mesa{
     pthread_mutex_t mtx; // esto es una proteccion para todo lo anterior
 };
 
-inline void mesa_init(Mesa& m){
+inline void mesa_init(Mesa& m, const Config& cfg = Config()){
     for (int i = 0; i < NUM_NODOS; i++){
         m.celda[i] = LIBRE;
     }
-    m.pos[PUMA] = NODO_T;
-    m.celda[NODO_T] = PUMA;
-    for (int p=1; p <= NUM_PERROS; p++){
-        int nodo = 9 + p;
+    m.pos[PUMA] = cfg.puma;
+    m.celda[cfg.puma] = PUMA;
+    for (int p = 1; p <= NUM_PERROS; p++){
+        int nodo = cfg.perros[p - 1];
         m.pos[p] = nodo;
         m.celda[nodo] = p;
     }

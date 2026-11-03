@@ -9,3 +9,6 @@ race
 
 # Metadatos de Finder
 .DS_Store
+.claude/
+partida
+partida_tsan

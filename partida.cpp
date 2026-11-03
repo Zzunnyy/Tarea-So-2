@@ -40,13 +40,21 @@ void* hilo_pieza(void* p){
     }
     return nullptr;
 }
-int main(){
+int main(int argc, char** argv){
+    Config cfg;
+    if (argc > 1){
+        string error;
+        if (!cargar_config(argv[1], cfg, error)){
+            cerr << "Error en config:" << error << endl;
+            return 1;
+        }
+    }
     Mesa m;
-    mesa_init(m);
+    mesa_init(m, cfg);
     ArgJugador args[NUM_PERROS+1];
     pthread_t hilos[NUM_PERROS+1];
     for (int i = 0; i <= NUM_PERROS; i++){
-        args[i] = {&m, i , 42, 50, 300};
+        args[i] = {&m, i, cfg.seed, cfg.min_ms, cfg.max_ms};
         pthread_create(&hilos[i], nullptr, hilo_pieza, &args[i]);
         }
     auto inicio = chrono::steady_clock::now();
