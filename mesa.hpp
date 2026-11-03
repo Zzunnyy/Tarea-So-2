@@ -122,3 +122,25 @@ inline void mesa_imprimir(Mesa& m){
     cout << "Capturados: " << m.capturados << endl;
     pthread_mutex_unlock(&m.mtx);
 }
+inline bool mesa_terminada(Mesa& m){
+    pthread_mutex_lock(&m.mtx);
+    bool t = m.terminado;
+    pthread_mutex_unlock(&m.mtx);
+    return t;
+}
+
+inline int mesa_pos(Mesa& m, int pieza){
+    pthread_mutex_lock(&m.mtx);
+    int p = m.pos[pieza];
+    pthread_mutex_unlock(&m.mtx);
+    return p;
+}
+
+inline void mesa_terminar(Mesa& m, int ganador){
+    pthread_mutex_lock(&m.mtx);
+    if (!m.terminado){
+        m.terminado = true;
+        m.ganador = ganador;
+    }
+    pthread_mutex_unlock(&m.mtx);
+}
