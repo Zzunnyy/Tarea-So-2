@@ -5,5 +5,3 @@ max_ms 300
 seed 42
 puma 25
 perros 10 11 12 13 14 15 16 17 18 19 20 21
-abandona 3 0
-abandona 5 0

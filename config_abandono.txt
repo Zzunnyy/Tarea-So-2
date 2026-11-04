@@ -1,0 +1,10 @@
+# igual a config.txt, pero los jugadores 3 y 5 abandonan al iniciar la partida
+# formato: abandona <jugador> <ms desde el inicio de la mesa>
+
+min_ms 50
+max_ms 300
+seed 42
+puma 25
+perros 10 11 12 13 14 15 16 17 18 19 20 21
+abandona 3 0
+abandona 5 0
