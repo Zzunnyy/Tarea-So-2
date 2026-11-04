@@ -83,8 +83,8 @@ inline int jugar_mesa(int id_mesa, const Config& cfg){
         this_thread::sleep_for(chrono::milliseconds(500));
         log_texto(id_mesa, mesa_a_texto(m));
         if (chrono::steady_clock::now() - inicio > chrono::seconds(TIMEOUT_MESA_S)){
-            log_texto(id_mesa, "EVENTO: tiempo agotado, se cierra la mesa");
-            mesa_terminar(m, 0);
+            if (mesa_terminar(m, 0))
+                log_texto(id_mesa, "EVENTO: tiempo agotado, se cierra la mesa");
         }
     }
     for (int i = 0; i < creados; i++) pthread_join(hilos[i], nullptr);

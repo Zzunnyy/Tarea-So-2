@@ -139,13 +139,17 @@ inline int mesa_pos(Mesa& m, int pieza){
     return p;
 }
 
-inline void mesa_terminar(Mesa& m, int ganador){
+// Devuelve true si esta llamada fue la que cerro la mesa, false si ya estaba cerrada
+inline bool mesa_terminar(Mesa& m, int ganador){
+    bool cerre = false;
     pthread_mutex_lock(&m.mtx);
     if (!m.terminado){
         m.terminado = true;
         m.ganador = ganador;
+        cerre = true;
     }
     pthread_mutex_unlock(&m.mtx);
+    return cerre;
 }
 inline string mesa_a_texto(Mesa& m){
     pthread_mutex_lock(&m.mtx);
