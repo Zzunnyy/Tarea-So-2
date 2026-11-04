@@ -31,7 +31,7 @@ inline bool validar_config(const Config& c, string& error){
         return false;
     }
     if (c.puma < 0 || c.puma >= NUM_NODOS){
-        error =" Casilla fuera de rnago";
+        error = "Casilla fuera de rango";
         return false;
     }
     if ((int)c.perros.size() != NUM_PERROS){
@@ -53,7 +53,7 @@ inline bool validar_config(const Config& c, string& error){
     set <int> con_abandono;
     for (const auto& ab: c.abandonos){
         if (ab.first < 1 || ab.second < 0){
-            error = "abandona: el jugador debe ser mayor a 1 y los ms mayor a 0";
+            error = "abandona: el jugador debe ser mayor o igual a 1 y los ms mayor o igual a 0";
             return false;
         }
         if (!con_abandono.insert(ab.first).second){
@@ -67,7 +67,7 @@ inline bool validar_config(const Config& c, string& error){
 inline bool cargar_config(const string& ruta, Config& c, string& error){
     ifstream f(ruta);
     if(!f){
-        error = "No se pudo abrir" + ruta + "'"; //eso es para ver la ruta en caso de error
+        error = "No se pudo abrir '" + ruta + "'"; // incluye la ruta para ubicar el error
         return false;
     }
     string linea;
@@ -109,7 +109,6 @@ inline bool cargar_config(const string& ruta, Config& c, string& error){
             }
         }else if(clave == "abandona"){
             int jug, ms;
-            
             string resto;
             if (!(ss >> jug >>ms) || (ss>>resto)){
                 error = donde + "Abandona necesita dos enteros: jugador y ms";
