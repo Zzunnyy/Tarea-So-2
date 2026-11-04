@@ -1,5 +1,6 @@
 #pragma once
 #include <fstream>
+#include <utility>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -13,6 +14,7 @@ using namespace std;
 const int NUM_PERROS = 12;
 // valores de la configuracion que ya usabamos
 struct Config {
+    vector<pair<int,int>> abandonos;
     int min_ms=50;
     int max_ms=300;
     unsigned int seed=42;
@@ -45,6 +47,17 @@ inline bool validar_config(const Config& c, string& error){
         }
         if (!usadas.insert(n).second){
             error = "casilla repetida:" + to_string(n);
+            return false;
+        }
+    }
+    set <int> con_abandono;
+    for (const auto& ab: c.abandonos){
+        if (ab.first < 1 || ab.second < 0){
+            error = "abandona: el jugador debe ser mayor a 1 y los ms mayor a 0";
+            return false;
+        }
+        if (!con_abandono.insert(ab.first).second){
+            error = "abandona: jugador repetido "+ to_string(ab.first);
             return false;
         }
     }
@@ -94,6 +107,15 @@ inline bool cargar_config(const string& ruta, Config& c, string& error){
                 error = donde +"'Perros' solo toma numeros enteros";
                 return false;
             }
+        }else if(clave == "abandona"){
+            int jug, ms;
+            
+            string resto;
+            if (!(ss >> jug >>ms) || (ss>>resto)){
+                error = donde + "Abandona necesita dos enteros: jugador y ms";
+                return false;
+            }
+            c.abandonos.push_back({jug,ms});
         }else{
             error = donde + "clave desconocida"+ clave + "'";
             return false;
@@ -109,4 +131,8 @@ inline bool leer_entero_positivo(const char* texto, int& salida){
     salida = (int)v;
     return true;
 }
-
+inline int ms_abandono(const Config& c, int jugador){
+    for (const auto& ab : c.abandonos)
+        if (ab.first == jugador) return ab.second;
+    return -1;
+}

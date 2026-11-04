@@ -59,8 +59,15 @@ inline void* hilo_pieza(void* p){
     }
     return nullptr;
 }
+struct DatosMesa{
+    int jug_puma=0;
+    int jug_perros =0;
+    int abandona_puma_ms=-1;
+    int abandona_perros_ms= -1;
+    bool hubo_abandono= false;
+};
 
-inline int jugar_mesa(int id_mesa, const Config& cfg){
+inline int jugar_mesa(int id_mesa, const Config& cfg, DatosMesa& datos){
     Mesa m; 
     mesa_init(m,cfg);
 
@@ -82,6 +89,28 @@ inline int jugar_mesa(int id_mesa, const Config& cfg){
     while (!mesa_terminada(m)){
         this_thread::sleep_for(chrono::milliseconds(500));
         log_texto(id_mesa, mesa_a_texto(m));
+        long ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - inicio).count();
+        int abandona = 0;
+        if (datos.abandona_puma_ms >= 0 && ms >= datos.abandona_puma_ms) abandona = 1;
+        if (datos.abandona_perros_ms >= 0 && ms >= datos.abandona_perros_ms && (abandona == 0 || datos.abandona_perros_ms < datos.abandona_puma_ms)) abandona = 2;
+        if (abandona == 1){
+            if (mesa_terminar(m, 2)){
+                datos.hubo_abandono = true;
+                log_texto(id_mesa, "EVENTO: el jugador " + to_string(datos.jug_puma) +
+                            " (puma) abandona, ganan los perros");
+            }
+        } else if (abandona == 2){
+            if (mesa_terminar(m, 1)){
+                datos.hubo_abandono = true;
+                log_texto(id_mesa, "EVENTO: el jugador " + to_string(datos.jug_perros) +
+                            " (perros) abandona, gana el puma");
+            }
+        } else if (ms > TIMEOUT_MESA_S * 1000L){
+            if (mesa_terminar(m, 0))
+                log_texto(id_mesa, "EVENTO: tiempo agotado, se cierra la mesa");
+        }
+    
+
         if (chrono::steady_clock::now() - inicio > chrono::seconds(TIMEOUT_MESA_S)){
             if (mesa_terminar(m, 0))
                 log_texto(id_mesa, "EVENTO: tiempo agotado, se cierra la mesa");
@@ -91,10 +120,13 @@ inline int jugar_mesa(int id_mesa, const Config& cfg){
 
     int ganador = m.ganador;        // seguro sin lock: ya se hizo join de todos los hilos
     log_texto(id_mesa, mesa_a_texto(m));
-    log_texto(id_mesa, string("FIN: ") + (ganador == 1 ? "gana el puma" :
-                                        ganador == 2 ? "ganan los perros" : "sin ganador (timeout/abandono)"));
+    log_texto(id_mesa, string("FIN: ") + (ganador == 1 ? "gana el puma" :ganador == 2 ? "ganan los perros" : "sin ganador (timeout)") +(datos.hubo_abandono ? " por abandono" : ""));
     mesa_destruir(m);
     return ganador;
+}
+inline int jugar_mesa(int id_mesa, const Config& cfg){
+    DatosMesa datos;
+    return jugar_mesa(id_mesa, cfg, datos);
 }
 
 struct ArgJuez {
