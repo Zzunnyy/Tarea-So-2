@@ -6,6 +6,8 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <atomic>
+#include <csignal>
 #include <sstream>
 #include "mesa.hpp"
 using namespace std;
@@ -13,7 +15,10 @@ using namespace std;
 const int TIMEOUT_MESA_S = 10; //esto evita partidas infinitaaas
 
 inline pthread_mutex_t MTX_LOG = PTHREAD_MUTEX_INITIALIZER;
-
+inline atomic<bool> g_cerrar{false};
+inline void manejador_sigint(int){
+    g_cerrar.store(true);
+}
 inline void log_texto(int id_mesa, const string& texto){
     pthread_mutex_lock(&MTX_LOG);
     istringstream in(texto);
@@ -93,7 +98,10 @@ inline int jugar_mesa(int id_mesa, const Config& cfg, DatosMesa& datos){
         int abandona = 0;
         if (datos.abandona_puma_ms >= 0 && ms >= datos.abandona_puma_ms) abandona = 1;
         if (datos.abandona_perros_ms >= 0 && ms >= datos.abandona_perros_ms && (abandona == 0 || datos.abandona_perros_ms < datos.abandona_puma_ms)) abandona = 2;
-        if (abandona == 1){
+        if (g_cerrar){
+            if (mesa_terminar(m, 0))
+                log_texto(id_mesa, "EVENTO: el servidor fue interrumpido (SIGINT), se cierra la mesa");
+        } else if (abandona == 1){
             if (mesa_terminar(m, 2)){
                 datos.hubo_abandono = true;
                 log_texto(id_mesa, "EVENTO: el jugador " + to_string(datos.jug_puma) +
@@ -110,17 +118,12 @@ inline int jugar_mesa(int id_mesa, const Config& cfg, DatosMesa& datos){
                 log_texto(id_mesa, "EVENTO: tiempo agotado, se cierra la mesa");
         }
     
-
-        if (chrono::steady_clock::now() - inicio > chrono::seconds(TIMEOUT_MESA_S)){
-            if (mesa_terminar(m, 0))
-                log_texto(id_mesa, "EVENTO: tiempo agotado, se cierra la mesa");
-        }
     }
     for (int i = 0; i < creados; i++) pthread_join(hilos[i], nullptr);
 
     int ganador = m.ganador;        // seguro sin lock: ya se hizo join de todos los hilos
     log_texto(id_mesa, mesa_a_texto(m));
-    log_texto(id_mesa, string("FIN: ") + (ganador == 1 ? "gana el puma" :ganador == 2 ? "ganan los perros" : "sin ganador (timeout)") +(datos.hubo_abandono ? " por abandono" : ""));
+    log_texto(id_mesa, string("FIN: ") + (ganador == 1 ? "gana el puma" :ganador == 2 ? "ganan los perros" : "sin ganador (cierre anticipado)") +(datos.hubo_abandono ? " por abandono" : ""));
     mesa_destruir(m);
     return ganador;
 }

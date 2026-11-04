@@ -1,4 +1,5 @@
 #include <queue>
+#include <ctime>
 #include "juego.hpp"
 using namespace std;
 
@@ -32,6 +33,19 @@ void log_servidor(const string& texto){ // mutex de log de las mesas
     pthread_mutex_unlock(&MTX_LOG);
 }
 
+// espera en la condicion como maximo 100 ms para poder revisar g_cerrar
+// (se llama con el mutex tomado)
+void esperar_cond(pthread_cond_t& cond, pthread_mutex_t& mtx){
+    timespec limite;
+    clock_gettime(CLOCK_REALTIME, &limite);
+    limite.tv_nsec += 100L * 1000000L;
+    if (limite.tv_nsec >= 1000000000L){
+        limite.tv_sec++;
+        limite.tv_nsec -= 1000000000L;
+    }
+    pthread_cond_timedwait(&cond, &mtx, &limite);
+}
+
 struct ArgLlegada{
     Servidor* srv;
     int id;
@@ -45,6 +59,7 @@ void* hilo_llegada(void* p){
     uniform_int_distribution<int> demora(0, a->max_ms);
 
     this_thread::sleep_for(chrono::milliseconds(demora(rng)));
+    if (g_cerrar) return nullptr; // el servidor ya no acepta jugadores
 
     log_servidor("llega el jugador " + to_string(a->id));
     Servidor& s = *a->srv;
@@ -81,7 +96,7 @@ void* hilo_mesa(void* p){
 
 int main(int argc, char** argv){
     if (argc < 3 || argc > 4){
-        cerr << "Uso para generar torneo" << endl;
+        cerr << "Uso: ./torneo N M [config.txt]" << endl;
         return 1 ;
     }
     int N,M;
@@ -93,10 +108,16 @@ int main(int argc, char** argv){
     if (argc == 4){
         string error;
         if (!cargar_config(argv[3], cfg, error)){
-            cerr << "Error en la configuracion"<< error << endl;
+            cerr << "Error en la configuracion: " << error << endl;
             return 1;
         }
     }
+    struct sigaction sa{};
+    sa.sa_handler = manejador_sigint;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(SIGINT, &sa, nullptr);
+
     Servidor srv;
     servidor_init(srv,M);
     vector<ArgLlegada> llegadas(N);
@@ -111,19 +132,28 @@ int main(int argc, char** argv){
         }
         jugadores++;
     }
-int num_mesas = jugadores / 2;
+    int num_mesas = jugadores / 2;
     vector<ArgMesa> mesas(num_mesas);
     vector<pthread_t> hilos_mesa(num_mesas);
     int lanzadas = 0;
-    for (int k = 0; k < num_mesas; k++){
+    for (int k = 0; k < num_mesas && !g_cerrar; k++){
         pthread_mutex_lock(&srv.mtx);
-        while (srv.espera.size() < 2)
-            pthread_cond_wait(&srv.hay_pareja, &srv.mtx);
+        while (srv.espera.size() < 2 && !g_cerrar)
+            esperar_cond(srv.hay_pareja, srv.mtx);
+        if (g_cerrar){
+            pthread_mutex_unlock(&srv.mtx);
+            break;
+        }
         int puma = srv.espera.front(); srv.espera.pop();
         int perros = srv.espera.front(); srv.espera.pop();
 
-        while (srv.mesas_activas >= srv.limite)
-            pthread_cond_wait(&srv.hay_mesa, &srv.mtx);
+        while (srv.mesas_activas >= srv.limite && !g_cerrar)
+            esperar_cond(srv.hay_mesa, srv.mtx);
+        if (g_cerrar){
+            pthread_mutex_unlock(&srv.mtx);
+            log_servidor("cierre del servidor: se descarta la pareja " + to_string(puma) + " y " + to_string(perros));
+            break;
+        }
         srv.mesas_activas++;
         if (srv.mesas_activas > srv.max_simultaneas) srv.max_simultaneas = srv.mesas_activas;
         pthread_mutex_unlock(&srv.mtx);
@@ -140,6 +170,8 @@ int num_mesas = jugadores / 2;
         }
         lanzadas++;
     }
+    if (g_cerrar)
+        log_servidor("SIGINT: no se aceptan mas jugadores; se espera el cierre ordenado de las mesas activas");
     for (int i =0; i< jugadores; i++) pthread_join(hilos_jugador[i], nullptr);
     for (int k=0; k< lanzadas; k++) pthread_join(hilos_mesa[k], nullptr);
     int puma_gana = 0, perros_ganan = 0, sin_ganador = 0, abandonos = 0;
@@ -158,5 +190,5 @@ int num_mesas = jugadores / 2;
         << "         puma " << puma_gana << " / perros " << perros_ganan
 << " / no hay ganador " << sin_ganador << "\n         (por abandono: " << abandonos << ")" << endl;
     servidor_destruir(srv);
-    return 0;
+    return g_cerrar ? 130 : 0;
 }
